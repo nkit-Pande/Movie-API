@@ -30,7 +30,7 @@ public class RefreshTokenService {
         if (refreshToken != null) {
             return refreshToken;
         } else {
-            long refreshTokenExpiredAt = Instant.now().plusMillis(30*1000).toEpochMilli();
+            long refreshTokenExpiredAt = Instant.now().plusMillis(100*1000).toEpochMilli();
             refreshToken = RefreshToken.builder()
                     .refreshToken(UUID.randomUUID().toString())
                     .tokenExpiredAt(Instant.now().plusMillis(refreshTokenExpiredAt))

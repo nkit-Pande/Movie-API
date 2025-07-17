@@ -31,9 +31,6 @@ public class MovieServiceImpl implements MovieService {
     @Value("${project.poster}")
     private String path;
 
-    @Value("${base.url}")
-    private String baseUrl;
-
 
     public MovieServiceImpl(MovieRepository repository, FileService fileService) {
         this.repository = repository;
@@ -42,12 +39,8 @@ public class MovieServiceImpl implements MovieService {
 
     @Override
     public MovieDto addMovie(MovieDto movieDto, MultipartFile file) throws IOException {
-        if (Files.exists(Paths.get(path + File.separator + file.getOriginalFilename())))
-            throw new FileExistsException("File already exits! Please enter another file name!");
+        String posterUrl = fileService.uploadFile(path, file);
 
-        String uploadedFileName = fileService.uploadFile(path, file);
-
-        movieDto.setPoster(uploadedFileName);
         Movie movie = new Movie(
                 null,
                 movieDto.getTitle(),
@@ -55,10 +48,11 @@ public class MovieServiceImpl implements MovieService {
                 movieDto.getStudio(),
                 movieDto.getCast(),
                 movieDto.getReleaseYear(),
-                movieDto.getPoster()
+                posterUrl
         );
+        
         Movie savedMovie = repository.save(movie);
-        String posterUrl = "/file/" + uploadedFileName;
+        
         return new MovieDto(
                 savedMovie.getMovieId(),
                 savedMovie.getTitle(),
@@ -67,15 +61,15 @@ public class MovieServiceImpl implements MovieService {
                 savedMovie.getCast(),
                 savedMovie.getReleaseYear(),
                 savedMovie.getPoster(),
-                posterUrl
+                savedMovie.getPoster()
         );
     }
 
     @Override
     public MovieDto getMovie(Integer movieId) {
-        Movie movie = repository.findById(movieId).orElseThrow(() -> new MovieNotFoundException("Movie not found with id: " + movieId));
-        String posterUrl = baseUrl + "/file/" + movie.getPoster();
-
+        Movie movie = repository.findById(movieId)
+                .orElseThrow(() -> new MovieNotFoundException("Movie not found with id: " + movieId));
+                
         return new MovieDto(
                 movie.getMovieId(),
                 movie.getTitle(),
@@ -83,8 +77,8 @@ public class MovieServiceImpl implements MovieService {
                 movie.getStudio(),
                 movie.getCast(),
                 movie.getReleaseYear(),
-                movie.getPoster(),
-                posterUrl
+                movie.getPoster(),  // This is already the full S3 URL
+                movie.getPoster()   // Return the same URL for both poster and posterUrl
         );
     }
 
@@ -94,7 +88,6 @@ public class MovieServiceImpl implements MovieService {
         List<MovieDto> dtos = new ArrayList<>();
 
         for (Movie movie : movies) {
-            String posterUrl = baseUrl + "/file/" + movie.getPoster();
             dtos.add(new MovieDto(
                     movie.getMovieId(),
                     movie.getTitle(),
@@ -102,8 +95,8 @@ public class MovieServiceImpl implements MovieService {
                     movie.getStudio(),
                     movie.getCast(),
                     movie.getReleaseYear(),
-                    movie.getPoster(),
-                    posterUrl
+                    movie.getPoster(),  // Full S3 URL
+                    movie.getPoster()   // Same URL for both fields
             ));
         }
 
@@ -135,7 +128,8 @@ public class MovieServiceImpl implements MovieService {
 
         Movie updatedMovie = repository.save(existingMovie);
 
-        String posterUrl = baseUrl + "/file/" + updatedMovie.getPoster();
+        // The poster field already contains the full S3 URL from FileService
+        String posterUrl = updatedMovie.getPoster();
 
         return new MovieDto(
                 updatedMovie.getMovieId(),
@@ -168,7 +162,6 @@ public class MovieServiceImpl implements MovieService {
         List<MovieDto> dtos = new ArrayList<>();
 
         for (Movie movie : movies) {
-            String posterUrl = baseUrl + "/file/" + movie.getPoster();
             dtos.add(new MovieDto(
                     movie.getMovieId(),
                     movie.getTitle(),
@@ -177,22 +170,21 @@ public class MovieServiceImpl implements MovieService {
                     movie.getCast(),
                     movie.getReleaseYear(),
                     movie.getPoster(),
-                    posterUrl
+                    movie.getPoster()  // Using the full S3 URL directly
             ));
         }
-        return new MoviePageResponse(dtos, pageNumber, pageSize,moviePage.getTotalPages(), (int) moviePage.getTotalElements(), moviePage.isLast());
+        return new MoviePageResponse(dtos, pageNumber, pageSize, moviePage.getTotalPages(), (int) moviePage.getTotalElements(), moviePage.isLast());
     }
 
     @Override
     public MoviePageResponse getAllMoviesByPaginationAndSort(Integer pageNumber, Integer pageSize, String sortBy, String sortDirection) {
         Sort sort = sortDirection.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
-        Pageable page = PageRequest.of(pageNumber, pageSize,sort);
+        Pageable page = PageRequest.of(pageNumber, pageSize, sort);
         Page<Movie> moviePage = repository.findAll(page);
         List<Movie> movies = moviePage.getContent();
         List<MovieDto> dtos = new ArrayList<>();
 
         for (Movie movie : movies) {
-            String posterUrl = baseUrl + "/file/" + movie.getPoster();
             dtos.add(new MovieDto(
                     movie.getMovieId(),
                     movie.getTitle(),
@@ -201,10 +193,9 @@ public class MovieServiceImpl implements MovieService {
                     movie.getCast(),
                     movie.getReleaseYear(),
                     movie.getPoster(),
-                    posterUrl
+                    movie.getPoster()  // Using the full S3 URL directly
             ));
         }
-        return new MoviePageResponse(dtos, pageNumber, pageSize,moviePage.getTotalPages(), (int) moviePage.getTotalElements(), moviePage.isLast());
-
+        return new MoviePageResponse(dtos, pageNumber, pageSize, moviePage.getTotalPages(), (int) moviePage.getTotalElements(), moviePage.isLast());
     }
 }

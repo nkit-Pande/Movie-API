@@ -31,7 +31,7 @@ public class MovieController {
         return "Working";
     }
 
-    @PreAuthorize("hasAuthority('ADMIN')")
+//    @PreAuthorize("hasAuthority('ADMIN')")
     @PostMapping("/add")
     public ResponseEntity<MovieDto> addMovieHandler(
             @RequestPart(required = true) MultipartFile file,
@@ -92,7 +92,7 @@ public class MovieController {
 
 
 
-    private MovieDto convertToMovieDto(String movieDtoObj) throws JsonProcessingException {
+    public MovieDto convertToMovieDto(String movieDtoObj) throws JsonProcessingException {
         if (movieDtoObj == null || movieDtoObj.trim().isEmpty()) {
             throw new IllegalArgumentException("Movie data cannot be empty");
         }
